@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stratify — Business Projection Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #080810;
+    --bg2: #0d0d1a;
+    --bg3: #111120;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8e8f4;
+    --text2: #8888aa;
+    --text3: #4a4a66;
+    --accent: #6c63ff;
+    --accent2: #9d4edd;
+    --accent-glow: rgba(108,99,255,0.15);
+    --green: #2dd4a0;
+    --red: #ff5f7e;
+    --amber: #f5a623;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+  /* HEADER */
+  header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    height: 52px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px;
+    background: rgba(8,8,16,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 17px; font-weight: 800; letter-spacing: -0.02em;
+  }
+  .logo-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800;
+  }
+  .logo-sub {
+    font-size: 10px; font-weight: 400; color: var(--text3);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    margin-left: 2px; margin-top: 1px;
+  }
+  .header-right {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .pill {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text3);
+    border: 1px solid var(--border);
+    border-radius: 100px; padding: 4px 10px;
+  }
+
+  /* LAYOUT */
+  .layout {
+    display: flex;
+    min-height: 100vh;
+    padding-top: 52px;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 260px; min-width: 260px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 20px 16px 32px;
+    overflow-y: auto;
+    position: sticky; top: 52px; height: calc(100vh - 52px);
+    display: flex; flex-direction: column;
+  }
+
+  .sidebar-section {
+    font-size: 9px; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent);
+    margin: 18px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--accent-glow);
+  }
+  .sidebar-section:first-child { margin-top: 4px; }
+
+  .field { margin-bottom: 9px; }
+  .field label {
+    display: block; font-size: 10px; color: var(--text2);
+    margin-bottom: 4px; letter-spacing: 0.04em;
+  }
+  .input-wrap { position: relative; }
+  .input-wrap input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: var(--mono);
+    font-weight: 300;
+    padding: 7px 28px 7px 10px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -moz-appearance: textfield;
+  }
+  .input-wrap input::-webkit-outer-spin-button,
+  .input-wrap input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .input-wrap input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  .input-suffix {
+    position: absolute; right: 9px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px; color: var(--text3);
+    font-family: var(--mono); pointer-events: none;
+  }
+
+  .run-btn {
+    margin-top: auto; padding-top: 20px;
+  }
+  .run-btn button {
+    width: 100%;
+    padding: 12px 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 10px;
+    color: #fff; font-family: var(--sans);
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 0.06em; cursor: pointer;
+    position: relative; overflow: hidden;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .run-btn button::before {
+    content: ''; position: absolute; inset: 0;
+    background: rgba(255,255,255,0);
+    transition: background 0.2s;
+  }
+  .run-btn button:hover::before { background: rgba(255,255,255,0.08); }
+  .run-btn button:active { transform: scale(0.97); }
+  .run-btn button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .error-msg {
+    margin-top: 10px; font-size: 11px; color: var(--red);
+    background: rgba(255,95,126,0.08);
+    border: 1px solid rgba(255,95,126,0.2);
+    border-radius: 7px; padding: 8px 10px;
+  }
+
+  /* MAIN */
+  .main {
+    flex: 1; min-width: 0;
+    padding: 24px;
+    overflow-y: auto;
+  }
+
+  /* EMPTY STATE */
+  .empty-state {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    height: calc(100vh - 120px);
+    gap: 14px; color: var(--text3);
+  }
+  .empty-icon {
+    width: 64px; height: 64px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    background: var(--bg2);
+  }
+  .empty-state p { font-size: 13px; color: var(--text3); text-align: center; line-height: 1.6; }
+
+  /* RESULTS */
+  .results { display: none; animation: fadeUp 0.4s ease; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SECTION HEADER */
+  .sec-header {
+    font-size: 9px; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--text3);
+    margin: 0 0 12px;
+  }
+  .sec-header.first { margin-top: 0; }
+
+  /* METRICS */
+  .metrics-row {
+    display: grid; grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 8px; margin-bottom: 8px;
+  }
+  .metric-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    transition: border-color 0.2s;
+  }
+  .metric-card:hover { border-color: var(--border2); }
+  .metric-card.accent {
+    border-color: rgba(108,99,255,0.3);
+    background: rgba(108,99,255,0.06);
+  }
+  .metric-card .ml {
+    font-size: 9px; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: 6px; font-weight: 500;
+  }
+  .metric-card .mv {
+    font-size: 17px; font-weight: 700;
+    font-family: var(--mono); color: var(--text);
+    letter-spacing: -0.02em;
+  }
+  .metric-card.accent .mv { color: #a89eff; }
+
+  /* CHARTS */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .chart-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    min-width: 0;
+  }
+  .chart-title {
+    font-size: 9px; color: var(--text2);
+    letter-spacing: 0.06em; margin-bottom: 8px;
+    text-transform: uppercase; font-weight: 500;
+  }
+  .chart-card .chart-container {
+    position: relative;
+    height: 90px;
+    width: 100%;
+  }
+  .chart-card canvas { position: absolute; inset: 0; }
+
+  /* TABLE */
+  .table-wrap {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 40px;
+  }
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+  thead tr { background: var(--bg3); }
+  th {
+    padding: 10px 12px; text-align: right;
+    font-size: 9px; font-weight: 500; color: var(--text3);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  th:first-child { text-align: center; width: 56px; }
+  td {
+    padding: 8px 12px; text-align: right;
+    border-bottom: 1px solid var(--border);
+    color: var(--text2); font-weight: 300;
+    white-space: nowrap;
+  }
+  td:first-child { text-align: center; color: var(--text3); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(255,255,255,0.015); }
+  tbody tr.be-row td { background: rgba(108,99,255,0.07); }
+  tbody tr.be-row td:first-child { color: var(--accent); font-weight: 500; }
+  .pos { color: var(--green) !important; }
+  .neg { color: var(--red) !important; }
+  .be-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff; font-size: 9px; font-weight: 700;
+    padding: 2px 7px; border-radius: 4px;
+    letter-spacing: 0.06em;
+  }
+
+  /* FOOTER */
+  .footer {
+    text-align: center; padding: 20px;
+    font-size: 11px; color: var(--text3);
+    border-top: 1px solid var(--border);
+  }
+  .footer a { color: var(--text3); text-decoration: none; }
+  .footer a:hover { color: var(--text2); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">S</div>
+    <div>
+      Stratify
+      <div class="logo-sub">Projection Model</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="pill">Deterministic</div>
+    <div class="pill">v1.0</div>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">Starting Position</div>
+
+    <div class="field"><label>Starting Cash</label>
+      <div class="input-wrap"><input type="number" id="cash" value="50000"><span class="input-suffix">$</span></div></div>
+    <div class="field"><label>Monthly Fixed Costs</label>
+      <div class="input-wrap"><input type="number" id="mon_fixed" value="5000"><span class="input-suffix">$</span></div></div>
+    <div class="field"><label>Fixed Cost Growth Rate</label>
+      <div class="input-wrap"><input type="number" id="fixed_growth_rate" value="0" step="0.1"><span class="input-suffix">%</span></div></div>
+    <div class="field"><label>Variable Cost / Unit</label>
+      <div class="input-wrap"><input type="number" id="var_cost" value="10"><span class="input-suffix">$</span></div></div>
+    <div class="field"><label>Price Per Unit / Month</label>
+      <div class="input-wrap"><input type="number" id="price_per_unit" value="50"><span class="input-suffix">$</span></div></div>
+
+    <div class="sidebar-section">Growth Inputs</div>
+
+    <div class="field"><label>Initial Customers</label>
+      <div class="input-wrap"><input type="number" id="customer_s" value="100"></div></div>
+    <div class="field"><label>Churn Rate</label>
+      <div class="input-wrap"><input type="number" id="churn_rate" value="5" step="0.1"><span class="input-suffix">%</span></div></div>
+    <div class="field"><label>Customer Acquisition Cost</label>
+      <div class="input-wrap"><input type="number" id="cac" value="100"><span class="input-suffix">$</span></div></div>
+    <div class="field"><label>Monthly Marketing Spend</label>
+      <div class="input-wrap"><input type="number" id="mon_mark_spend" value="2000"><span class="input-suffix">$</span></div></div>
+
+    <div class="sidebar-section">Projection</div>
+
+    <div class="field"><label>Months to Project</label>
+      <div class="input-wrap"><input type="number" id="proj_months" value="24" min="1" max="120"><span class="input-suffix">mo</span></div></div>
+
+    <div class="run-btn">
+      <button id="runBtn" onclick="runSim()">&#9654;&nbsp;&nbsp;Run Simulation</button>
+      <div id="errMsg"></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main" id="mainPanel">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">📊</div>
+      <p>Enter your business parameters<br>and run the simulation to see projections.</p>
+    </div>
+
+    <div class="results" id="results">
+
+      <div class="sec-header first">Key Metrics</div>
+      <div class="metrics-row" id="metrics1"></div>
+      <div class="metrics-row" id="metrics2"></div>
+      <div style="height:20px"></div>
+
+      <div class="sec-header">Charts</div>
+      <div class="charts-grid" id="chartsGrid"></div>
+
+      <div class="sec-header">Monthly Projection Table</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Mo</th>
+              <th>Customers</th>
+              <th>Revenue</th>
+              <th>Var. Cost</th>
+              <th>Fixed Cost</th>
+              <th>Total Costs</th>
+              <th>Op. Profit</th>
+              <th>Cash Balance</th>
+            </tr>
+          </thead>
+          <tbody id="tBody"></tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Built with Stratify &mdash; Deterministic Projection Model &nbsp;·&nbsp; <a href="#">stratify.app</a>
+</div>
+
+<script>
+const gv = id => parseFloat(document.getElementById(id).value) || 0;
+const gi = id => parseInt(document.getElementById(id).value) || 12;
+
+function fmt(n, dec) {
+  if (n == null || isNaN(n)) return '—';
+  dec = dec !== undefined ? dec : 0;
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 1e6) return sign + '$' + (abs / 1e6).toFixed(2) + 'M';
+  if (abs >= 1e3) return sign + '$' + (abs / 1e3).toFixed(1) + 'K';
+  return sign + '$' + abs.toFixed(dec);
+}
+function fmtN(n, dec) { return n == null || isNaN(n) ? '—' : Number(n).toFixed(dec !== undefined ? dec : 1); }
+
+let charts = [];
+
+function runSim() {
+  document.getElementById('errMsg').innerHTML = '';
+  try {
+    const cash0 = gv('cash'), monFixed = gv('mon_fixed'), fixedGR = gv('fixed_growth_rate') / 100;
+    const varCost = gv('var_cost'), ppu = gv('price_per_unit'), churn = gv('churn_rate') / 100;
+    const cac = gv('cac'), markSpend = gv('mon_mark_spend'), months = gi('proj_months');
+    const custStart = gv('customer_s');
+
+    if (ppu <= 0) throw new Error('Price per unit must be greater than zero.');
+    if (ppu <= varCost) throw new Error('Price per unit must exceed variable cost per unit.');
+    if (months < 1 || months > 120) throw new Error('Projection months must be between 1 and 120.');
+
+    const cm = ppu - varCost;
+    const data = [];
+    let cash = cash0, cumRev = 0, cumProfit = 0;
+    let prevCust = custStart, peakBurn = 0;
+    let breakevenMonth = null, cashOutMonth = null;
+
+    for (let m = 1; m <= months; m++) {
+      const customers = m === 1 ? custStart : prevCust * (1 - churn) + (cac > 0 ? markSpend / cac : 0);
+      const revenue = customers * ppu;
+      const varCosts = customers * varCost;
+      const fixedCosts = monFixed * Math.pow(1 + fixedGR, m - 1);
+      const totalCosts = fixedCosts + varCosts + markSpend;
+      const opProfit = revenue - totalCosts;
+      const burn = Math.max(0, totalCosts - revenue);
+      cash -= (totalCosts - revenue);
+      if (burn > peakBurn) peakBurn = burn;
+      cumRev += revenue;
+      cumProfit += opProfit;
+      if (revenue >= totalCosts && !breakevenMonth) breakevenMonth = m;
+      if (cash <= 0 && !cashOutMonth) cashOutMonth = m;
+
+      data.push({
+        m, customers: +customers.toFixed(2),
+        revenue: +revenue.toFixed(2), varCosts: +varCosts.toFixed(2),
+        fixedCosts: +fixedCosts.toFixed(2), totalCosts: +totalCosts.toFixed(2),
+        opProfit: +opProfit.toFixed(2), cash: +cash.toFixed(2),
+        cumRev: +cumRev.toFixed(2), cumProfit: +cumProfit.toFixed(2)
+      });
+      prevCust = customers;
+    }
+
+    const ltv = churn > 0 ? cm / churn : null;
+    const ltv_cac = ltv && cac > 0 ? ltv / cac : null;
+    const beRev = monFixed / cm * ppu;
+    const lastRow = data[data.length - 1];
+    const grossMargin = lastRow.revenue > 0 ? (lastRow.revenue - lastRow.varCosts) / lastRow.revenue * 100 : null;
+    const runway = cashOutMonth || months + '+';
+
+    renderMetrics({ cumRev, finalCash: cash, totalBurn: Math.max(0, -cumProfit), peakBurn, breakevenMonth, runway, ltv, ltv_cac, cm, beRev, grossMargin, cmRatio: cm / ppu * 100 });
+    renderCharts(data);
+    renderTable(data, breakevenMonth);
+
+    document.getElementById('emptyState').style.display = 'none';
+    const res = document.getElementById('results');
+    res.style.display = 'block';
+    res.style.animation = 'none';
+    void res.offsetWidth;
+    res.style.animation = 'fadeUp 0.4s ease';
+  } catch (e) {
+    document.getElementById('errMsg').innerHTML = `<div class="error-msg">${e.message}</div>`;
+  }
+}
+
+function renderMetrics({ cumRev, finalCash, totalBurn, peakBurn, breakevenMonth, runway, ltv, ltv_cac, cm, beRev, grossMargin, cmRatio }) {
+  const m1 = [
+    ['Final Revenue', fmt(cumRev), true],
+    ['Final Cash', fmt(finalCash), false],
+    ['Total Burn', fmt(totalBurn), false],
+    ['Peak Burn / Mo', fmt(peakBurn), false],
+  ];
+  const m2 = [
+    ['Break-even Month', breakevenMonth ?? 'Never', true],
+    ['Runway (Months)', runway, false],
+    ['LTV', fmt(ltv), false],
+    ['LTV / CAC', ltv_cac ? fmtN(ltv_cac, 2) + 'x' : '—', false],
+    ['Contribution Margin', fmt(cm), false],
+    ['CM Ratio', cmRatio ? fmtN(cmRatio, 1) + '%' : '—', false],
+    ['Break-even Revenue', fmt(beRev), false],
+    ['Gross Margin', grossMargin ? fmtN(grossMargin, 1) + '%' : '—', false],
+  ];
+  document.getElementById('metrics1').innerHTML = m1.map(([l, v, a]) =>
+    `<div class="metric-card${a ? ' accent' : ''}"><div class="ml">${l}</div><div class="mv">${v}</div></div>`).join('');
+  document.getElementById('metrics2').innerHTML = m2.map(([l, v, a]) =>
+    `<div class="metric-card${a ? ' accent' : ''}"><div class="ml">${l}</div><div class="mv">${v}</div></div>`).join('');
+}
+
+function renderCharts(data) {
+  charts.forEach(c => c.destroy());
+  charts = [];
+
+  const labels = data.map(r => r.m);
+  const accent = '#6c63ff', green = '#2dd4a0', red = '#ff5f7e', amber = '#f5a623', pink = '#e879b9';
+
+  const defs = [
+    { id: 'c1', title: 'Revenue over time', key: 'revenue', color: accent, type: 'line' },
+    { id: 'c2', title: 'Cash balance over time', key: 'cash', color: green, type: 'line' },
+    { id: 'c3', title: 'Monthly burn (expenditure)', key: null, color: red, type: 'bar', dataFn: r => Math.max(0, r.totalCosts - r.revenue) },
+    { id: 'c4', title: 'Customer count over time', key: 'customers', color: amber, type: 'line' },
+    { id: 'c5', title: 'Operating profit over time', key: 'opProfit', color: pink, type: 'line', full: true },
+  ];
+
+  document.getElementById('chartsGrid').innerHTML = defs.map(d =>
+    `<div class="chart-card">
+      <div class="chart-title">${d.title}</div>
+      <div class="chart-container"><canvas id="${d.id}"></canvas></div>
+    </div>`).join('');
+
+  const gridColor = 'rgba(255,255,255,0.04)';
+  const tickColor = 'rgba(255,255,255,0.25)';
+
+  defs.forEach(d => {
+    const vals = d.dataFn ? data.map(d.dataFn) : data.map(r => r[d.key]);
+    const ctx = document.getElementById(d.id).getContext('2d');
+    const inst = new Chart(ctx, {
+      type: d.type,
+      data: {
+        labels,
+        datasets: [{
+          data: vals,
+          ...(d.type === 'line' ? {
+            borderColor: d.color,
+            backgroundColor: d.color + '18',
+            tension: 0.35, fill: true,
+            pointRadius: 0, borderWidth: 2,
+          } : {
+            backgroundColor: d.color + 'cc',
+            borderRadius: 3,
+          })
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1a1a2e', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+            titleColor: '#888', bodyColor: '#e8e8f4', padding: 10, cornerRadius: 8,
+            callbacks: {
+              label: ctx => ' ' + fmt(ctx.raw, 0),
+              title: ctx => 'Month ' + ctx[0].label
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: tickColor, font: { size: 10, family: "'JetBrains Mono'" }, maxTicksLimit: 8 },
+            grid: { color: gridColor },
+          },
+          y: {
+            ticks: { color: tickColor, font: { size: 10, family: "'JetBrains Mono'" }, callback: v => fmt(v) },
+            grid: { color: gridColor },
+          }
+        }
+      }
+    });
+    charts.push(inst);
+  });
+}
+
+function renderTable(data, be) {
+  document.getElementById('tBody').innerHTML = data.map((r, i) => {
+    const isB = r.m === be;
+    return `<tr class="${isB ? 'be-row' : ''}">
+      <td>${isB ? '<span class="be-badge">BE</span>' : r.m}</td>
+      <td>${fmtN(r.customers, 1)}</td>
+      <td class="pos">${fmt(r.revenue, 2)}</td>
+      <td>${fmt(r.varCosts, 2)}</td>
+      <td>${fmt(r.fixedCosts, 2)}</td>
+      <td>${fmt(r.totalCosts, 2)}</td>
+      <td class="${r.opProfit < 0 ? 'neg' : 'pos'}">${fmt(r.opProfit, 2)}</td>
+      <td class="${r.cash < 0 ? 'neg' : ''}">${fmt(r.cash, 2)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Allow Enter key to trigger simulation
+document.addEventListener('keydown', e => { if (e.key === 'Enter') runSim(); });
+</script>
+</body>
+</html>
